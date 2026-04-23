@@ -14,13 +14,8 @@ st.set_page_config(page_title="İtalyanca Edebi Metin Analizi | LDA", layout="wi
 
 @st.cache_resource
 def load_spacy():
-    """İtalyanca dil modelini yükler, kurulu değilse otomatik olarak indirir."""
-    try:
-        return spacy.load("it_core_news_sm")
-    except OSError:
-        # Eğer model Streamlit sunucusunda yoksa, terminal komutuyla indirir
-        subprocess.run(["python", "-m", "spacy", "download", "it_core_news_sm"])
-        return spacy.load("it_core_news_sm")
+    """İtalyanca dil modelini yükler."""
+    return spacy.load("it_core_news_sm")
 
 nlp = load_spacy()
 
