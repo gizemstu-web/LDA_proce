@@ -7,17 +7,20 @@ import spacy
 import pyLDAvis.gensim_models
 import streamlit.components.v1 as components
 import re
+import subprocess
 
 # Sayfa yapılandırması
 st.set_page_config(page_title="İtalyanca Edebi Metin Analizi | LDA", layout="wide")
 
 @st.cache_resource
 def load_spacy():
-    """İtalyanca dil modelini yükler."""
+    """İtalyanca dil modelini yükler, kurulu değilse otomatik olarak indirir."""
     try:
         return spacy.load("it_core_news_sm")
-    except:
-        return None
+    except OSError:
+        # Eğer model Streamlit sunucusunda yoksa, terminal komutuyla indirir
+        subprocess.run(["python", "-m", "spacy", "download", "it_core_news_sm"])
+        return spacy.load("it_core_news_sm")
 
 nlp = load_spacy()
 
@@ -25,7 +28,6 @@ def preprocess_italian_text(text, stop_words):
     """Metni temizler, lemmatization uygular ve durak sözcükleri atar."""
     text = re.sub(r'\s+', ' ', str(text).lower())
     doc = nlp(text)
-    # Sadece isim, sıfat ve fiilleri alarak daha anlamlı konular elde edelim
     tokens = [token.lemma_ for token in doc if token.is_alpha and not token.is_stop and token.lemma_ not in stop_words]
     return tokens
 
@@ -48,7 +50,6 @@ def main():
     extra_stop_words = st.sidebar.text_area("Ek Durak Sözcükler (Virgülle ayırın)", placeholder="es: roma, firenze, disse...")
 
     if uploaded_file is not None:
-        # Veri okuma
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
             column_name = st.selectbox("Analiz edilecek sütunu seçin:", df.columns)
@@ -57,17 +58,14 @@ def main():
             documents = uploaded_file.read().decode("utf-8").split('\n')
 
         if st.button("Modeli Eğit ve Görselleştir"):
-            with st.spinner("İtalyanca metinler işleniyor ve model eğitiliyor..."):
+            with st.spinner("İtalyanca metinler işleniyor ve model eğitiliyor... (İlk çalıştırmada modelin inmesi 1-2 dakika sürebilir)"):
                 
-                # 1. Ön İşleme
                 custom_stops = [s.strip() for s in extra_stop_words.split(',')] if extra_stop_words else []
                 processed_docs = [preprocess_italian_text(doc, custom_stops) for doc in documents]
                 
-                # 2. Sözlük ve Korpus Oluşturma
                 dictionary = corpora.Dictionary(processed_docs)
                 corpus = [dictionary.doc2bow(text) for text in processed_docs]
                 
-                # 3. LDA Model Eğitimi
                 lda_model = LdaModel(
                     corpus=corpus,
                     id2word=dictionary,
@@ -77,21 +75,19 @@ def main():
                     random_state=42
                 )
                 
-                # --- SONUÇLARIN GÖSTERİMİ ---
                 st.subheader("Tespit Edilen Temalar ve Anahtar Kelimeler")
                 cols = st.columns(3)
                 for idx, topic in lda_model.print_topics(-1):
                     cols[idx % 3].write(f"**Tema {idx+1}:**")
                     cols[idx % 3].caption(topic)
 
-                # --- pyLDAvis GÖRSELLEŞTİRME ---
                 st.subheader("İnteraktif Konu Haritası")
                 vis_data = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
                 html_obj = pyLDAvis.prepared_data_to_html(vis_data)
                 components.html(html_obj, height=800, scrolling=True)
 
     else:
-        st.info("Lütfen sol menüden bir dosya yükleyerek başlayın. Örnek: De Amicis - 'Sull'oceano' metin fragmanları.")
+        st.info("Lütfen sol menüden bir dosya yükleyerek başlayın.")
 
 if __name__ == "__main__":
     main()
