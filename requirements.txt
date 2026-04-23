@@ -1,8 +1,7 @@
 streamlit
-pandas
+pandas<2.0.0
 gensim
-spacy
+spacy==3.7.2
 pyLDAvis
 matplotlib
-# İtalyanca dil modelini doğrudan GitHub üzerinden çekiyoruz:
-https://github.com/explosion/spacy-models/releases/download/it_core_news_sm-3.7.0/it_core_news_sm-3.7.0-py3-none-any.whl
+it_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/it_core_news_sm-3.7.0/it_core_news_sm-3.7.0-py3-none-any.whl
